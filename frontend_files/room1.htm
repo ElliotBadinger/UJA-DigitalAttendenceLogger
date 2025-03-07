@@ -1,58 +1,250 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-
-<title>Student Attendence</title>
-
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Attendance</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .student-row {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .student-row:nth-child(odd) {
+            background-color: #f9f9f9;
+        }
+        .student-name {
+            flex: 1;
+            font-size: 16px;
+        }
+        .status-indicator {
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+        .present {
+            background-color: #4CAF50;
+        }
+        .absent {
+            background-color: #F44336;
+        }
+        .attendance-btn {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 14px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+        .absent-btn {
+            background-color: #F44336;
+        }
+        .submit-btn {
+            background-color: #2196F3;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            text-align: center;
+            display: block;
+            font-size: 16px;
+            margin: 30px auto;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+        .submit-btn:hover {
+            background-color: #0b7dda;
+        }
+        .attendance-btn:hover {
+            opacity: 0.9;
+        }
+        .status-bar {
+            background-color: #f1f1f1;
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .error-message {
+            color: #F44336;
+            font-weight: bold;
+            text-align: center;
+            margin: 10px 0;
+            display: none;
+        }
+        .success-message {
+            color: #4CAF50;
+            font-weight: bold;
+            text-align: center;
+            margin: 10px 0;
+            display: none;
+        }
+    </style>
 </head>
 
 <body>
+    <h1>Student Attendance - Room 1, Mr Dlamini</h1>
+    
+    <div class="status-bar" id="statusBar">
+        Loading class information...
+    </div>
+    
+    <div id="error-message" class="error-message"></div>
+    <div id="success-message" class="success-message"></div>
+    
+    <div id="student-list">
+        <!-- Student rows will be added here by JavaScript -->
+    </div>
+    
+    <button id="submit-btn" class="submit-btn" onclick="sendAttendance()">Submit Attendance</button>
 
-<h1>Student Attendence Room 1, Mr Dlamini</h1>
-<p id='0v'></p>
-<button id='0b' onclick=mark(0)>Mark Absent</button>
-<p id='1v'></p>
-<button id='1b' onclick=mark(1)>Mark Absent</button>
-<p id='2v'></p>
-<button id='2b' onclick=mark(2)>Mark Absent</button>
-<p id='3v'></p>
-<button id='3b' onclick=mark(3)>Mark Absent</button>
-<p id='4v'></p>
-<button id='4b' onclick=mark(4)>Mark Absent</button>
-<p id='5v'></p>
-<button id='5b' onclick=mark(5)>Mark Absent</button>
-<p id='6v'></p>
-<button id='6b' onclick=mark(6)>Mark Absent</button>
-<p id='7v'></p>
-<button id='7b' onclick=mark(7)>Mark Absent</button>
-<p id='8v'></p>
-<button id='8b' onclick=mark(8)>Mark Absent</button>
-<p id='9v'></p>
-<button id='9b' onclick=mark(9)>Mark Absent</button>
-
-<button onclick=send()>Send</button>
-
-<script src="/class1.js"></script>
-<script>
-
-let presence = {"here": [true, true, true, true, true, true, true, true, true, true]};
-
-for (let i = 0; i <= 9; i++) {
-    document.getElementById(`${i}v`).innerHTML = Students.students[i];
-}
-function mark(studentnumber){ 
-	presence.here[studentnumber] = !presence.here[studentnumber];
-	if (presence.here[studentnumber] == false){ document.getElementById(studentnumber+'b').innerHTML="Mark Present"; }
-	if (presence.here[studentnumber] == true){ document.getElementById(studentnumber+'b').innerHTML="Mark Absent"; }
-	console.log(presence.here)
-}
-function send(){
-	fetch("/attendenceroom1", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(presence) })
-	.then(response => response.json())
-	.then(result => console.log("Success", result))
-	.catch(error => console.error("Error", errors));
-}
-</script>
-
+    <script src="/class1.js"></script>
+    <script>
+        // Initial attendance data - all students present by default
+        let presence = {"here": []};
+        let studentListElement = document.getElementById('student-list');
+        let statusBar = document.getElementById('statusBar');
+        let errorMessage = document.getElementById('error-message');
+        let successMessage = document.getElementById('success-message');
+        
+        // Function to show a temporary message
+        function showMessage(element, message, duration = 3000) {
+            element.textContent = message;
+            element.style.display = 'block';
+            setTimeout(() => {
+                element.style.display = 'none';
+            }, duration);
+        }
+        
+        // Function to initialize the student list
+        function initializeStudentList() {
+            try {
+                if (!Students || !Students.students || !Array.isArray(Students.students)) {
+                    throw new Error("Student data not available");
+                }
+                
+                // Initialize presence data
+                presence.here = Array(Students.students.length).fill(true);
+                
+                // Update status bar
+                let now = new Date();
+                statusBar.textContent = `Class: Room 1 | Date: ${now.toLocaleDateString()} | Time: ${now.toLocaleTimeString()}`;
+                
+                // Create student rows
+                studentListElement.innerHTML = '';
+                Students.students.forEach((student, index) => {
+                    let row = document.createElement('div');
+                    row.className = 'student-row';
+                    
+                    // Create status indicator
+                    let statusIndicator = document.createElement('div');
+                    statusIndicator.className = 'status-indicator present';
+                    statusIndicator.id = `indicator-${index}`;
+                    row.appendChild(statusIndicator);
+                    
+                    // Create student name
+                    let nameElement = document.createElement('div');
+                    nameElement.className = 'student-name';
+                    nameElement.textContent = student;
+                    row.appendChild(nameElement);
+                    
+                    // Create attendance button
+                    let button = document.createElement('button');
+                    button.className = 'attendance-btn';
+                    button.id = `btn-${index}`;
+                    button.textContent = 'Mark Absent';
+                    button.onclick = () => toggleAttendance(index);
+                    row.appendChild(button);
+                    
+                    studentListElement.appendChild(row);
+                });
+            } catch (error) {
+                console.error("Error initializing student list:", error);
+                errorMessage.textContent = "Error loading student list. Please refresh the page.";
+                errorMessage.style.display = 'block';
+            }
+        }
+        
+        // Function to toggle student attendance
+        function toggleAttendance(studentIndex) {
+            try {
+                // Toggle presence status
+                presence.here[studentIndex] = !presence.here[studentIndex];
+                
+                // Update UI
+                let button = document.getElementById(`btn-${studentIndex}`);
+                let indicator = document.getElementById(`indicator-${studentIndex}`);
+                
+                if (presence.here[studentIndex]) {
+                    button.textContent = "Mark Absent";
+                    button.classList.remove('absent-btn');
+                    indicator.classList.remove('absent');
+                    indicator.classList.add('present');
+                } else {
+                    button.textContent = "Mark Present";
+                    button.classList.add('absent-btn');
+                    indicator.classList.remove('present');
+                    indicator.classList.add('absent');
+                }
+                
+                console.log(`Student ${studentIndex} attendance updated:`, presence.here[studentIndex]);
+            } catch (error) {
+                console.error("Error toggling attendance:", error);
+                showMessage(errorMessage, "Error updating attendance status");
+            }
+        }
+        
+        // Function to send attendance data to server
+        function sendAttendance() {
+            try {
+                fetch("/attendenceroom1", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify(presence)
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Server responded with status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(result => {
+                    console.log("Success:", result);
+                    showMessage(successMessage, "Attendance submitted successfully!");
+                })
+                .catch(error => {
+                    console.error("Error:", error);
+                    showMessage(errorMessage, "Failed to submit attendance. Please try again.");
+                });
+            } catch (error) {
+                console.error("Error sending attendance:", error);
+                showMessage(errorMessage, "Error preparing attendance data for submission");
+            }
+        }
+        
+        // Initialize the page when loaded
+        window.onload = function() {
+            initializeStudentList();
+        };
+    </script>
 </body>
+</html>
